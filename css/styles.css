@@ -107,10 +107,11 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px; /* Aumentado de 8px a 10px para mejor espaciado */
     cursor: pointer;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     transition: all 0.2s ease;
+    padding: 0 16px; /* Añadido padding lateral para todos los botones */
 }
 
 .btn-action:hover {
@@ -122,10 +123,19 @@ html, body {
     transform: scale(0.96);
 }
 
+/* Estilos específicos para íconos en botones */
+.btn-action i {
+    font-size: 18px;
+}
+
 .btn-gps { 
     background-color: #ffffff; 
     color: #1a73e8;
     border: 1px solid #e0e0e0;
+}
+
+.btn-gps i {
+    color: #1a73e8;
 }
 
 .btn-whatsapp { 
@@ -133,9 +143,19 @@ html, body {
     color: #ffffff;
 }
 
+/* Espaciado específico para el ícono de WhatsApp */
+.btn-whatsapp i {
+    font-size: 20px;
+    margin-right: 2px; /* Pequeño ajuste adicional */
+}
+
 .btn-info {
     background-color: #4a4a4a;
     color: #ffffff;
+}
+
+.btn-info i {
+    font-size: 18px;
 }
 
 /* Modal para información */
@@ -203,6 +223,16 @@ html, body {
     .btn-action {
         height: 40px;
         font-size: 12px;
+        gap: 8px; /* Reducido ligeramente para móviles */
+        padding: 0 12px; /* Menos padding en móviles */
+    }
+    
+    .btn-action i {
+        font-size: 16px;
+    }
+    
+    .btn-whatsapp i {
+        font-size: 18px;
     }
     
     .opacity-panel input[type="range"] {

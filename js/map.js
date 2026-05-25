@@ -9,7 +9,7 @@ class DoctaMap {
         this.watchId = null;
     }
     
-    // Inicializar el mapa
+// Inicializar el mapa (js/map.js)
     init() {
         this.map = new google.maps.Map(document.getElementById(this.mapElementId), {
             zoom: CONFIG.zoom.default,
@@ -22,33 +22,29 @@ class DoctaMap {
             fullscreenControl: false,
             streetViewControl: false,
             minZoom: CONFIG.zoom.min,
-            maxZoom: CONFIG.zoom.max
-            // Se eliminó por completo el bloque 'restriction' para dar libre movimiento
+            maxZoom: CONFIG.zoom.max, // <-- Aquí Google Maps frena el zoom del usuario en 19
+            mapId: "DEMO_MAP_ID" 
         });
         
         this.initTileLayer();
         return this;
     }
     
-    // Inicializar la capa de tiles optimizada
+    // Inicializar la capa de tiles (js/map.js)
     initTileLayer() {
         this.doctaTileLayer = new google.maps.ImageMapType({
             getTileUrl: (coord, zoom) => {
-                // ESCUDO PROTECTOR: Proaco solo tiene imágenes entre Zoom 14 y 19.
-                // Si el usuario está fuera de este rango, abortamos la petición al instante.
+                // Doble check de seguridad por si el GPS o un método fuerza un zoom mayor
                 if (zoom < 14 || zoom > 19) {
                     return null;
                 }
-
-                // Si está en el zoom correcto, armamos la URL de forma directa y agresiva
                 return `${CONFIG.tileUrl}${zoom}/${coord.x}/${coord.y}.png`;
             },
             tileSize: new google.maps.Size(256, 256),
             name: "DoctaPlan",
-            maxZoom: 25, // Forzamos a que la capa no busque más allá de lo que existe
-            minZoom: 10,
-            opacity: CONFIG.opacity.default,
-            isPng: true
+            maxZoom: 19, // Clavado en 19
+            minZoom: 14,
+            opacity: CONFIG.opacity.default
         });
         
         this.map.overlayMapTypes.insertAt(0, this.doctaTileLayer);
@@ -108,24 +104,26 @@ class DoctaMap {
         return this.watchId;
     }
     
-    // Actualizar o crear marcador de usuario
+    // Actualizar o crear marcador de usuario (Versión Moderna Avanzada)
     updateUserMarker() {
         if (this.userMarker) {
-            this.userMarker.setPosition(this.currentPos);
+            this.userMarker.position = this.currentPos;
         } else {
-            this.userMarker = new google.maps.Marker({
+            // Creamos un punto azul HTML nativo para el GPS
+            const pinGps = document.createElement("div");
+            pinGps.style.width = "16px";
+            pinGps.style.height = "16px";
+            pinGps.style.backgroundColor = CONFIG.marker.fillColor;
+            pinGps.style.borderRadius = "50%";
+            pinGps.style.border = `${CONFIG.marker.strokeWeight}px solid ${CONFIG.marker.strokeColor}`;
+            pinGps.style.boxShadow = "0 0 6px rgba(0,0,0,0.4)";
+
+            // Instanciamos el marcador moderno de Google sin deprecated
+            this.userMarker = new google.maps.marker.AdvancedMarkerElement({
                 position: this.currentPos,
                 map: this.map,
-                title: "Estás aquí",
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: CONFIG.marker.scale,
-                    fillColor: CONFIG.marker.fillColor,
-                    fillOpacity: CONFIG.marker.fillOpacity,
-                    strokeColor: CONFIG.marker.strokeColor,
-                    strokeWeight: CONFIG.marker.strokeWeight,
-                },
-                zIndex: 1000
+                content: pinGps,
+                title: "Estás aquí"
             });
         }
     }
@@ -155,7 +153,7 @@ class DoctaMap {
     // Compartir ubicación por WhatsApp
     shareLocation() {
         if (this.currentPos) {
-            const mapaLink = `https://www.google.com/maps?q=${this.currentPos.lat},${this.currentPos.lng}`;
+            const mapaLink = `https://maps.google.com/?q=${this.currentPos.lat},${this.currentPos.lng}`;
             const textoMensaje = encodeURIComponent(`¡Hola! Te comparto la ubicación exacta del lote en Docta: ${mapaLink}`);
             window.open(`https://wa.me/?text=${textoMensaje}`, '_blank');
             return true;
@@ -167,10 +165,7 @@ class DoctaMap {
     destroy() {
         this.stopTracking();
         if (this.userMarker) {
-            this.userMarker.setMap(null);
-        }
-        if (this.doctaTileLayer) {
-            // Limpiar la capa de tiles si es necesario
+            this.userMarker.map = null;
         }
         if (this.map) {
             google.maps.event.clearInstanceListeners(this.map);
