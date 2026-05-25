@@ -3,138 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizador - hayequipo.png</title>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-        #map_canvas {
-            width: 100%;
-            height: 100%;
-        }
-        .btn-ubicacion {
-            position: absolute;
-            bottom: 24px;
-            right: 15px;
-            z-index: 5;
-            background-color: #fff;
-            border: 0;
-            border-radius: 2px;
-            box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px -1px;
-            margin: 10px;
-            padding: 0px 10px;
-            height: 40px;
-            font-weight: bold;
-            color: #666;
-            cursor: pointer;
-        }
-        .btn-ubicacion:hover {
-            background-color: #f4f4f4;
-            color: #333;
-        }
-    </style>
+    <title>Mapa de Urbanización - Docta Tiles</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+
 </head>
 <body>
+    <div class="floating-panel info-panel">
+        <h3>Docta - Masterplan</h3>
+        <p>Capa de mosaicos dinámicos optimizados.</p>
+    </div>
 
-    <button class="btn-ubicacion" id="btnUbicacion">Mi Ubicación</button>
+    <div class="floating-panel opacity-panel">
+        <label for="fader">Opacidad Plano</label>
+        <input type="range" id="fader" min="0" max="1" step="0.01" value="0.8">
+        <span id="opacityValue" class="opacity-value">80%</span>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn-action btn-gps" id="btnCentrar">
+            <span>📍</span> Centrar GPS
+        </button>
+        <button class="btn-action btn-whatsapp" id="btnCompartir">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;">
+                <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.907h.004c4.368 0 7.926-3.559 7.93-7.93a7.9 7.9 0 0 0-2.333-5.646M7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.69-4.98c-.202-.101-1.194-.588-1.379-.653-.185-.066-.32-.099-.455.101-.134.2-.522.653-.64.788-.117.135-.235.151-.437.05-1.823-.907-2.93-1.494-3.724-2.856-.21-.36-.022-.556.16-.738.163-.164.362-.42.543-.63.18-.21.24-.36.361-.6.12-.242.06-.454-.03-.653-.088-.2-1.379-3.326-1.456-3.51a.6.6 0 0 0-.58-.426H5.45c-.19 0-.498.07-.759.354-.26.285-1 .976-1 2.38s1.025 2.76 1.17 2.961c.145.2 2.01 3.073 4.87 4.314.68.295 1.21.472 1.62.602.684.218 1.307.182 1.802.108.552-.083 1.194-.488 1.364-1.057.171-.569.171-1.057.12-1.157-.05-.1-.186-.15-.388-.25"/>
+            </svg>
+            Enviar por WhatsApp
+        </button>
+        <button class="btn-action btn-info" id="btnInfo">
+            <span>ℹ️</span> Info
+        </button>
+    </div>
 
     <div id="map_canvas"></div>
 
-    <script>
-      let map;
-      let userMarker;
-
-      function initMap() {
-        // 1. Inicializar el mapa centrado inicialmente en la zona general
-        map = new google.maps.Map(document.getElementById("map_canvas"), {
-          zoom: 15,
-          center: { lat: -31.4167, lng: -64.1833 },
-          mapTypeId: 'roadmap'
-        });
-
-        // 2. Límites de la imagen de tu urbanización (ajusta según tu plano real)
-        const imageBounds = {
-          south: -31.455776,
-          west: -64.318015,
-          north: -31.435316,
-          east: -64.281694,
-        };
-
-        // 3. Superposición del plano de lotes (hayequipo.png)
-        const urbanizacionOverlay = new google.maps.GroundOverlay(
-          "hayequipo.png",
-          imageBounds,
-          { 
-            opacity: 0.85, // Un poco más opaco para ver bien las subdivisiones de los lotes
-            clickable: false 
-          }
-        );
-        urbanizacionOverlay.setMap(map);
-
-        // 4. Activar el rastreo de ubicación del usuario
-        trakearUbicacionUsuario();
-      }
-
-      function trakearUbicacionUsuario() {
-        // Verificar si el navegador soporta Geolocalización
-        if (navigator.geolocation) {
-          
-          // watchPosition actualiza la ubicación automáticamente si el usuario se mueve
-          navigator.geolocation.watchPosition(
-            (position) => {
-              const pos = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-              };
-
-              // Si el marcador ya existe, solo movemos su posición
-              if (userMarker) {
-                userMarker.setPosition(pos);
-              } else {
-                // Si no existe, creamos el marcador del usuario (Personalizado Azul)
-                userMarker = new google.maps.Marker({
-                  position: pos,
-                  map: map,
-                  title: "Estás aquí",
-                  icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 8,
-                    fillColor: "#4285F4", // Azul Google
-                    fillOpacity: 1,
-                    strokeColor: "#ffffff",
-                    strokeWeight: 2,
-                  }
-                });
-                
-                // La primera vez que encuentra al usuario, centra el mapa en él
-                map.setCenter(pos);
-              }
-
-              // Configurar el botón físico para centrar manualmente cuando el usuario quiera
-              document.getElementById("btnUbicacion").addEventListener("click", () => {
-                map.setCenter(pos);
-                map.setZoom(17); // Zoom más cercano para ver el lote exacto
-              });
-            },
-            () => {
-              console.log("Error: Falló el servicio de geolocalización o se denegaron permisos.");
-            },
-            {
-              enableHighAccuracy: true, // Fuerza al dispositivo a usar el GPS de alta precisión
-              maximumAge: 0,
-              timeout: 5000
-            }
-          );
-        } else {
-          console.log("Error: Tu navegador no soporta geolocalización.");
-        }
-      }
-    </script>
-
-    <script async defer
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/main.js"></script>
+    <!-- Google Maps API -->
+    <script async defer 
         src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBaJ0OWLpoI32N27anFam7-8qcJpqS8QxA&callback=initMap">
     </script>
 </body>
