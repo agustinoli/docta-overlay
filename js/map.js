@@ -30,38 +30,23 @@ class DoctaMap {
         return this;
     }
     
-    // Inicializar la capa de tiles filtrando por coordenadas geográficas de pantalla
+    // Inicializar la capa de tiles optimizada
     initTileLayer() {
-        // 1. Creamos la "caja protectora" de Docta usando la API de Google
-        const boundingBoxDocta = new google.maps.LatLngBounds(
-            new google.maps.LatLng(CONFIG.boundsDocta.south, CONFIG.boundsDocta.west), // Suroeste
-            new google.maps.LatLng(CONFIG.boundsDocta.north, CONFIG.boundsDocta.east)  // Noreste
-        );
-
         this.doctaTileLayer = new google.maps.ImageMapType({
             getTileUrl: (coord, zoom) => {
-                // 2. Si el mapa aún está cargando o no tiene coordenadas de pantalla, dejamos pasar
-                if (!this.map.getBounds()) {
-                    return `${CONFIG.tileUrl}${zoom}/${coord.x}/${coord.y}.png`;
+                // ESCUDO PROTECTOR: Proaco solo tiene imágenes entre Zoom 14 y 19.
+                // Si el usuario está fuera de este rango, abortamos la petición al instante.
+                if (zoom < 14 || zoom > 19) {
+                    return null;
                 }
 
-                // 3. Obtenemos el rectángulo de lo que el usuario ve actualmente en su pantalla
-                const pantallaActual = this.map.getBounds();
-
-                // 4. VALIDACIÓN CRUCIAL: ¿Lo que ve el usuario interseca con Docta?
-                if (!boundingBoxDocta.intersects(pantallaActual)) {
-                    // Si NO se tocan (ej. está mirando Nueva Córdoba), abortamos la petición.
-                    // No se genera tráfico hacia el S3 de Proaco.
-                    return null; 
-                }
-
-                // 5. Si está posicionado sobre Docta, la petición se realiza normalmente
+                // Si está en el zoom correcto, armamos la URL de forma directa y agresiva
                 return `${CONFIG.tileUrl}${zoom}/${coord.x}/${coord.y}.png`;
             },
             tileSize: new google.maps.Size(256, 256),
             name: "DoctaPlan",
-            maxZoom: CONFIG.zoom.max,
-            minZoom: CONFIG.zoom.min,
+            maxZoom: 25, // Forzamos a que la capa no busque más allá de lo que existe
+            minZoom: 10,
             opacity: CONFIG.opacity.default,
             isPng: true
         });
