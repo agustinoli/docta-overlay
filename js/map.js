@@ -11,9 +11,25 @@ class DoctaMap {
     
 // Inicializar el mapa (js/map.js)
     init() {
+        // 1. LEER QUERY PARAMS: Extraemos lat, lng y zoom de la URL si existen
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramLat = parseFloat(urlParams.get('lat'));
+        const paramLng = parseFloat(urlParams.get('lng'));
+        const paramZoom = parseInt(urlParams.get('zoom'));
+
+        // 2. DETERMINAR CENTRO Y ZOOM: Si vienen en la URL usamos esos, si no, el CONFIG por defecto
+        const centroInicial = (!isNaN(paramLat) && !isNaN(paramLng)) 
+            ? { lat: paramLat, lng: paramLng } 
+            : CONFIG.center;
+
+        const zoomInicial = !isNaN(paramZoom) 
+            ? paramZoom 
+            : CONFIG.zoom.default;
+
+        // 3. INICIALIZAR GOOGLE MAPS
         this.map = new google.maps.Map(document.getElementById(this.mapElementId), {
-            zoom: CONFIG.zoom.default,
-            center: CONFIG.center,
+            zoom: zoomInicial,
+            center: centroInicial,
             mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: { 
@@ -22,8 +38,7 @@ class DoctaMap {
             fullscreenControl: false,
             streetViewControl: false,
             minZoom: CONFIG.zoom.min,
-            maxZoom: CONFIG.zoom.max, // <-- Aquí Google Maps frena el zoom del usuario en 19
-            mapId: "DEMO_MAP_ID" 
+            maxZoom: CONFIG.zoom.max
         });
         
         this.initTileLayer();
@@ -150,11 +165,22 @@ class DoctaMap {
         }
     }
     
-    // Compartir ubicación por WhatsApp
+    // Compartir ubicación por WhatsApp apuntando a tu propia app (js/map.js)
     shareLocation() {
-        if (this.currentPos) {
-            const mapaLink = `https://maps.google.com/?q=${this.currentPos.lat},${this.currentPos.lng}`;
-            const textoMensaje = encodeURIComponent(`¡Hola! Te comparto la ubicación exacta del lote en Docta: ${mapaLink}`);
+        // Usamos la posición del centro actual del mapa o la del GPS del usuario. 
+        // Para vendedores, es mejor usar el centro de la pantalla actual para que apunten al lote exacto.
+        const centroActual = this.map.getCenter();
+        const zoomActual = this.map.getZoom();
+
+        if (centroActual) {
+            const lat = centroActual.lat().toFixed(6);
+            const lng = centroActual.lng().toFixed(6);
+            
+            // Construimos el enlace dinámico apuntando al dominio actual de tu web
+            const baseAppUrl = window.location.origin + window.location.pathname;
+            const miMapaLink = `${baseAppUrl}?lat=${lat}&lng=${lng}&zoom=${zoomActual}`;
+            
+            const textoMensaje = encodeURIComponent(`¡Hola! Te comparto la ubicación exacta del lote en Docta: ${miMapaLink}`);
             window.open(`https://wa.me/?text=${textoMensaje}`, '_blank');
             return true;
         }

@@ -4,31 +4,44 @@ let doctaMapInstance = null;
 // Función de callback para Google Maps
 function initMap() {
     try {
-        // Crear instancia del mapa
+        // Crear instancia del mapa e inicializar (ya lee los Query Params internamente)
         doctaMapInstance = new DoctaMap('map_canvas');
         doctaMapInstance.init();
         
         // Configurar controles de UI
         setupUIControls();
         
-        // Iniciar seguimiento de ubicación
+        // Verificar si la URL vino con coordenadas para saber si es un cliente externo
+        const urlParams = new URLSearchParams(window.location.search);
+        const tieneParams = urlParams.has('lat') && urlParams.has('lng');
+
+        // Iniciar seguimiento de ubicación de fondo
         doctaMapInstance.startTracking(
             (position) => {
-                // Actualización exitosa
-                console.log("Ubicación actualizada:", position);
+                console.log("Ubicación de fondo actualizada:", position);
+                // NOTA: No disparamos centerOnUser() automáticamente aquí para respetar 
+                // la posición del lote que vino por el enlace de WhatsApp.
             },
             (error) => {
                 console.warn("Error de geolocalización:", error);
-                showNotification("Error de ubicación: " + error, "error");
             }
         );
         
+        // Si no tiene parámetros (es el vendedor abriendo la app de cero), 
+        // le damos una ayudita y lo centramos tras unos segundos si hay GPS activo
+        if (!tieneParams) {
+            setTimeout(() => {
+                if (doctaMapInstance.getCurrentLocation()) {
+                    doctaMapInstance.centerOnUser();
+                }
+            }, 1500);
+        }
+        
     } catch (error) {
         console.error("Error al inicializar el mapa:", error);
-        showNotification("Error al cargar el mapa. Por favor, recarga la página.", "error");
+        showNotification("Error al cargar el mapa.", "error");
     }
 }
-
 // Configurar controles de interfaz de usuario
 function setupUIControls() {
     // Control de opacidad
