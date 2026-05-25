@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador - hayequipo.png</title>
+    <style>
+        /* Ocupar toda la pantalla */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map_canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .info-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 5;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        h3 {
+            margin: 0 0 5px 0;
+            color: #1a73e8;
+            font-size: 16px;
+        }
+        p {
+            margin: 0;
+            font-size: 13px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="info-badge">
+        <h3>Capa: hayequipo.png</h3>
+        <p>Superposición activa sobre el mapa de Córdoba</p>
+    </div>
+
+    <div id="map_canvas"></div>
+
+    <script>
+      function initMap() {
+        // 1. Inicializar el mapa centrado en Córdoba
+        const map = new google.maps.Map(document.getElementById("map_canvas"), {
+          zoom: 13,
+          center: { lat: -31.4167, lng: -64.1833 },
+          mapTypeId: 'roadmap'
+        });
+
+        // 2. Definir las coordenadas de las esquinas (Suroeste y Noreste)
+        // Puedes tunear estos números decimales para estirar, achicar o mover tu imagen
+        const imageBounds = {
+          south: -31.455776, // Esquina Inferior (Sur)
+          west: -64.318015,  // Esquina Izquierda (Oeste)
+          north: -31.435316, // Esquina Superior (Norte)
+          east: -64.281694,  // Esquina Derecha (Este)
+        };
+
+        // 3. Crear el GroundOverlay apuntando al archivo local/relativo
+        const historicalOverlay = new google.maps.GroundOverlay(
+          "hayequipo.png", // Al estar en la misma carpeta, basta con poner el nombre del archivo
+          imageBounds,
+          { 
+            opacity: 0.8,      // 80% de opacidad para que resalte bien tu imagen
+            clickable: false   // Evita que la imagen bloquee los clics sobre los elementos del mapa
+          }
+        );
+
+        // 4. Dibujar la capa sobre el mapa
+        historicalOverlay.setMap(map);
+      }
+    </script>
+
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBaJ0OWLpoI32N27anFam7-8qcJpqS8QxA&callback=initMap">
+    </script>
+</body>
+</html>
