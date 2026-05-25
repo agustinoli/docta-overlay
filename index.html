@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizador - hayequipo.png</title>
     <style>
-        /* Ocupar toda la pantalla */
         html, body {
             height: 100%;
             margin: 0;
@@ -16,67 +15,122 @@
             width: 100%;
             height: 100%;
         }
-        .info-badge {
+        .btn-ubicacion {
             position: absolute;
-            top: 15px;
-            left: 15px;
+            bottom: 24px;
+            right: 15px;
             z-index: 5;
-            background-color: rgba(255, 255, 255, 0.95);
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            background-color: #fff;
+            border: 0;
+            border-radius: 2px;
+            box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px -1px;
+            margin: 10px;
+            padding: 0px 10px;
+            height: 40px;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
         }
-        h3 {
-            margin: 0 0 5px 0;
-            color: #1a73e8;
-            font-size: 16px;
-        }
-        p {
-            margin: 0;
-            font-size: 13px;
-            color: #555;
+        .btn-ubicacion:hover {
+            background-color: #f4f4f4;
+            color: #333;
         }
     </style>
 </head>
 <body>
 
-    <div class="info-badge">
-        <h3>Capa: hayequipo.png</h3>
-        <p>Superposición activa sobre el mapa de Córdoba</p>
-    </div>
+    <button class="btn-ubicacion" id="btnUbicacion">Mi Ubicación</button>
 
     <div id="map_canvas"></div>
 
     <script>
+      let map;
+      let userMarker;
+
       function initMap() {
-        // 1. Inicializar el mapa centrado en Córdoba
-        const map = new google.maps.Map(document.getElementById("map_canvas"), {
-          zoom: 13,
+        // 1. Inicializar el mapa centrado inicialmente en la zona general
+        map = new google.maps.Map(document.getElementById("map_canvas"), {
+          zoom: 15,
           center: { lat: -31.4167, lng: -64.1833 },
           mapTypeId: 'roadmap'
         });
 
-        // 2. Definir las coordenadas de las esquinas (Suroeste y Noreste)
-        // Puedes tunear estos números decimales para estirar, achicar o mover tu imagen
+        // 2. Límites de la imagen de tu urbanización (ajusta según tu plano real)
         const imageBounds = {
-          south: -31.455776, // Esquina Inferior (Sur)
-          west: -64.318015,  // Esquina Izquierda (Oeste)
-          north: -31.435316, // Esquina Superior (Norte)
-          east: -64.281694,  // Esquina Derecha (Este)
+          south: -31.455776,
+          west: -64.318015,
+          north: -31.435316,
+          east: -64.281694,
         };
 
-        // 3. Crear el GroundOverlay apuntando al archivo local/relativo
-        const historicalOverlay = new google.maps.GroundOverlay(
-          "hayequipo.png", // Al estar en la misma carpeta, basta con poner el nombre del archivo
+        // 3. Superposición del plano de lotes (hayequipo.png)
+        const urbanizacionOverlay = new google.maps.GroundOverlay(
+          "hayequipo.png",
           imageBounds,
           { 
-            opacity: 0.8,      // 80% de opacidad para que resalte bien tu imagen
-            clickable: false   // Evita que la imagen bloquee los clics sobre los elementos del mapa
+            opacity: 0.85, // Un poco más opaco para ver bien las subdivisiones de los lotes
+            clickable: false 
           }
         );
+        urbanizacionOverlay.setMap(map);
 
-        // 4. Dibujar la capa sobre el mapa
-        historicalOverlay.setMap(map);
+        // 4. Activar el rastreo de ubicación del usuario
+        trakearUbicacionUsuario();
+      }
+
+      function trakearUbicacionUsuario() {
+        // Verificar si el navegador soporta Geolocalización
+        if (navigator.geolocation) {
+          
+          // watchPosition actualiza la ubicación automáticamente si el usuario se mueve
+          navigator.geolocation.watchPosition(
+            (position) => {
+              const pos = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+
+              // Si el marcador ya existe, solo movemos su posición
+              if (userMarker) {
+                userMarker.setPosition(pos);
+              } else {
+                // Si no existe, creamos el marcador del usuario (Personalizado Azul)
+                userMarker = new google.maps.Marker({
+                  position: pos,
+                  map: map,
+                  title: "Estás aquí",
+                  icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 8,
+                    fillColor: "#4285F4", // Azul Google
+                    fillOpacity: 1,
+                    strokeColor: "#ffffff",
+                    strokeWeight: 2,
+                  }
+                });
+                
+                // La primera vez que encuentra al usuario, centra el mapa en él
+                map.setCenter(pos);
+              }
+
+              // Configurar el botón físico para centrar manualmente cuando el usuario quiera
+              document.getElementById("btnUbicacion").addEventListener("click", () => {
+                map.setCenter(pos);
+                map.setZoom(17); // Zoom más cercano para ver el lote exacto
+              });
+            },
+            () => {
+              console.log("Error: Falló el servicio de geolocalización o se denegaron permisos.");
+            },
+            {
+              enableHighAccuracy: true, // Fuerza al dispositivo a usar el GPS de alta precisión
+              maximumAge: 0,
+              timeout: 5000
+            }
+          );
+        } else {
+          console.log("Error: Tu navegador no soporta geolocalización.");
+        }
       }
     </script>
 
