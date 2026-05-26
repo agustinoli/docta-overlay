@@ -47,5 +47,7 @@ const CONFIG = {
         south: -31.4650, 
         east: -64.2650,  
         west: -64.3250   
-    }
+    },
+    
+    geoJsonUrl: "js/docta.geojson",
 };

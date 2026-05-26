@@ -11,30 +11,21 @@ class DoctaMap {
     
 // Inicializar el mapa (js/map.js)
     init() {
-        // 1. LEER QUERY PARAMS: Extraemos lat, lng y zoom de la URL si existen
         const urlParams = new URLSearchParams(window.location.search);
         const paramLat = parseFloat(urlParams.get('lat'));
         const paramLng = parseFloat(urlParams.get('lng'));
         const paramZoom = parseInt(urlParams.get('zoom'));
 
-        // 2. DETERMINAR CENTRO Y ZOOM: Si vienen en la URL usamos esos, si no, el CONFIG por defecto
-        const centroInicial = (!isNaN(paramLat) && !isNaN(paramLng)) 
-            ? { lat: paramLat, lng: paramLng } 
-            : CONFIG.center;
+        const centroInicial = (!isNaN(paramLat) && !isNaN(paramLng)) ? { lat: paramLat, lng: paramLng } : CONFIG.center;
+        const zoomInicial = !isNaN(paramZoom) ? paramZoom : CONFIG.zoom.default;
+        this.lastClickedLoteLatLng = null;
 
-        const zoomInicial = !isNaN(paramZoom) 
-            ? paramZoom 
-            : CONFIG.zoom.default;
-
-        // 3. INICIALIZAR GOOGLE MAPS
         this.map = new google.maps.Map(document.getElementById(this.mapElementId), {
             zoom: zoomInicial,
             center: centroInicial,
             mapTypeId: 'hybrid',
             mapTypeControl: true,
-            mapTypeControlOptions: { 
-                position: google.maps.ControlPosition.LEFT_BOTTOM 
-            },
+            mapTypeControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
             fullscreenControl: false,
             streetViewControl: false,
             minZoom: CONFIG.zoom.min,
@@ -75,6 +66,96 @@ class DoctaMap {
         return null;
     }
     
+    loadGeoJsonData(onLoteClickCallback) {
+        this.infoWindow = new google.maps.InfoWindow();
+
+        this.map.data.setStyle((feature) => {
+            const statusObj = feature.getProperty('status') || {};
+            const estadoNormalizado = (statusObj.name || '').toLowerCase();
+            let colorRelleno = "#0F9CDA";
+            let opacidadRelleno = 0.15;
+            let colorBorde = "#0F9CDA";
+
+            if (estadoNormalizado === "disponible") {
+                colorRelleno = "#1e8e3e";
+                opacidadRelleno = 0.35;
+                colorBorde = "#137333";
+            } else if (estadoNormalizado === "vendido" || estadoNormalizado === "reservado") {
+                colorRelleno = "#d93025";
+                opacidadRelleno = 0.25;
+                colorBorde = "#b06000";
+            }
+
+            return {
+                fillColor: colorRelleno,
+                fillOpacity: opacidadRelleno,
+                strokeColor: colorBorde,
+                strokeWeight: 1.2,
+                strokeOpacity: 0.6,
+                clickable: true
+            };
+        });
+
+        fetch(CONFIG.geoJsonUrl)
+            .then(response => response.json())
+            .then(geoJsonData => { this.map.data.addGeoJson(geoJsonData); })
+            .catch(err => console.error("Error GeoJSON:", err));
+
+        // ESCUCHA DEL CLIC ACTUALIZADA CON PRODUCT Y CITY
+        this.map.data.addListener('click', (event) => {
+            const statusObj = event.feature.getProperty('status') || {};
+            const productObj = event.feature.getProperty('product') || {}; // Sub-objeto del producto
+            
+            const propiedades = {
+                id: event.feature.getProperty('unit_id') || event.feature.id || 'N/A',
+                etapa: event.feature.getProperty('stage') || 'N/A',
+                manzana: event.feature.getProperty('sector') || 'N/A',
+                lote: event.feature.getProperty('unit') || 'N/A',
+                superficie: event.feature.getProperty('square_meters') || 'N/A',
+                precio: event.feature.getProperty('formated_price') || 'Consultar',
+                estado: statusObj.name || 'Desconocido',
+                // NUEVOS CAMPOS:
+                producto: productObj.name || 'N/A',
+                ciudad: event.feature.getProperty('city') || 'MALAGUEÑO'
+            };
+
+            // Guardamos la coordenada exacta de este lote clicado para usarla en shareLocation()
+            this.lastClickedLoteLatLng = event.latLng;
+
+            const posicionPopup = event.latLng;
+
+            if (onLoteClickCallback) {
+                onLoteClickCallback(propiedades, posicionPopup, this.infoWindow, this.map);
+            }
+        });
+
+        // Si el usuario cierra el Popup manualmente, limpiamos la selección del lote
+        this.infoWindow.addListener('closeclick', () => {
+            this.lastClickedLoteLatLng = null;
+        });
+    }
+
+    // COMPARTIR UBICACIÓN INTELIGENTE (js/map.js)
+    shareLocation() {
+        // Prioridad 1: Coordenada del lote clickeado. Prioridad 2: Centro de la pantalla.
+        const ubicacionDestino = this.lastClickedLoteLatLng || this.map.getCenter();
+        const zoomActual = this.map.getZoom();
+
+        if (ubicacionDestino) {
+            // Soporta tanto objetos LatLng de Google (funciones .lat()) como objetos nativos si hiciera falta
+            const lat = (typeof ubicacionDestino.lat === 'function') ? ubicacionDestino.lat().toFixed(6) : ubicacionDestino.lat;
+            const lng = (typeof ubicacionDestino.lng === 'function') ? ubicacionDestino.lng().toFixed(6) : ubicacionDestino.lng;
+            
+            const baseAppUrl = window.location.origin + window.location.pathname;
+            const miMapaLink = `${baseAppUrl}?lat=${lat}&lng=${lng}&zoom=${zoomActual}`;
+            
+            const textoMensaje = encodeURIComponent(`¡Hola! Te comparto la ubicación exacta de este lote en Docta: ${miMapaLink}`);
+            window.open(`https://wa.me/?text=${textoMensaje}`, '_blank');
+            return true;
+        }
+        return false;
+    }
+
     // Centrar mapa en posición del usuario
     centerOnUser() {
         if (this.currentPos) {
@@ -163,28 +244,6 @@ class DoctaMap {
             navigator.geolocation.clearWatch(this.watchId);
             this.watchId = null;
         }
-    }
-    
-    // Compartir ubicación por WhatsApp apuntando a tu propia app (js/map.js)
-    shareLocation() {
-        // Usamos la posición del centro actual del mapa o la del GPS del usuario. 
-        // Para vendedores, es mejor usar el centro de la pantalla actual para que apunten al lote exacto.
-        const centroActual = this.map.getCenter();
-        const zoomActual = this.map.getZoom();
-
-        if (centroActual) {
-            const lat = centroActual.lat().toFixed(6);
-            const lng = centroActual.lng().toFixed(6);
-            
-            // Construimos el enlace dinámico apuntando al dominio actual de tu web
-            const baseAppUrl = window.location.origin + window.location.pathname;
-            const miMapaLink = `${baseAppUrl}?lat=${lat}&lng=${lng}&zoom=${zoomActual}`;
-            
-            const textoMensaje = encodeURIComponent(`¡Hola! Te comparto la ubicación exacta del lote en Docta: ${miMapaLink}`);
-            window.open(`https://wa.me/?text=${textoMensaje}`, '_blank');
-            return true;
-        }
-        return false;
     }
     
     // Destruir mapa y limpiar recursos

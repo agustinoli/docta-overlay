@@ -2,40 +2,52 @@
 let doctaMapInstance = null;
 
 // Función de callback para Google Maps
+// js/main.js
+
 function initMap() {
     try {
-        // Crear instancia del mapa e inicializar (ya lee los Query Params internamente)
+        // Instanciar e inicializar mapa base e imágenes S3
         doctaMapInstance = new DoctaMap('map_canvas');
         doctaMapInstance.init();
         
-        // Configurar controles de UI
+        // Configurar los botones de la interfaz
         setupUIControls();
         
-        // Verificar si la URL vino con coordenadas para saber si es un cliente externo
-        const urlParams = new URLSearchParams(window.location.search);
-        const tieneParams = urlParams.has('lat') && urlParams.has('lng');
+        // js/main.js -> Dentro de initMap()
 
-        // Iniciar seguimiento de ubicación de fondo
-        doctaMapInstance.startTracking(
-            (position) => {
-                console.log("Ubicación de fondo actualizada:", position);
-                // NOTA: No disparamos centerOnUser() automáticamente aquí para respetar 
-                // la posición del lote que vino por el enlace de WhatsApp.
-            },
-            (error) => {
-                console.warn("Error de geolocalización:", error);
+        // ACTIVACIÓN DEL MAPA VECTORIAL CON POPUP INTERACTIVO
+        doctaMapInstance.loadGeoJsonData((datosLote, posicion, infoWindow, mapaNativo) => {
+            console.log("Lote seleccionado para Popup con metadata extendida:", datosLote);
+            
+            let colorEstado = "#4285F4";
+            const estadoNormalizado = datosLote.estado.toLowerCase();
+            if (estadoNormalizado === "vendido" || estadoNormalizado === "reservado") {
+                colorEstado = "#d93025";
+            } else if (estadoNormalizado === "disponible") {
+                colorEstado = "#1e8e3e";
             }
-        );
-        
-        // Si no tiene parámetros (es el vendedor abriendo la app de cero), 
-        // le damos una ayudita y lo centramos tras unos segundos si hay GPS activo
-        if (!tieneParams) {
-            setTimeout(() => {
-                if (doctaMapInstance.getCurrentLocation()) {
-                    doctaMapInstance.centerOnUser();
-                }
-            }, 1500);
-        }
+
+            // DISEÑO DEL POPUP ACTUALIZADO CON PRODUCTO Y CIUDAD
+            const htmlContent = `
+                <div style="font-family: Arial, sans-serif; padding: 5px; min-width: 200px; color: #333; line-height: 1.4;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 4px; color: #1a73e8; font-weight: bold;">
+                        Mz: ${datosLote.manzana} — Lote: ${datosLote.lote}
+                    </h4>
+                    <p style="margin: 3px 0; font-size: 12px;"><strong>Desarrollo:</strong> ${datosLote.producto}</p>
+                    <p style="margin: 3px 0; font-size: 12px;"><strong>Etapa:</strong> ${datosLote.etapa}</p>
+                    <p style="margin: 3px 0; font-size: 12px;"><strong>Superficie:</strong> ${datosLote.superficie} m²</p>
+                    <p style="margin: 3px 0; font-size: 12px;"><strong>Ubicación:</strong> ${datosLote.ciudad}</p>
+                    <p style="margin: 5px 0 3px 0; font-size: 13px;"><strong>Precio:</strong> <span style="color: #202124; font-weight: bold;">${datosLote.precio}</span></p>
+                    <div style="margin-top: 8px; display: inline-block; padding: 3px 8px; border-radius: 4px; color: white; font-size: 10px; font-weight: bold; background-color: ${colorEstado}; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ${datosLote.estado}
+                    </div>
+                </div>
+            `;
+
+            infoWindow.setContent(htmlContent);
+            infoWindow.setPosition(posicion);
+            infoWindow.open(mapaNativo);
+        });
         
     } catch (error) {
         console.error("Error al inicializar el mapa:", error);
