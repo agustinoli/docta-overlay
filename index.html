@@ -33,6 +33,15 @@
 
     <!-- Scripts -->
     <script src="js/config.js"></script>
+    <script src="js/key.js"></script>
+
+    <script>
+        // Creamos la etiqueta de script de Google Maps dinámicamente usando la clave cargada en memoria
+        const scriptGoogle = document.createElement('script');
+        scriptGoogle.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&loading=async&callback=initMap&v=weekly`;
+        scriptGoogle.defer = true;
+        document.head.appendChild(scriptGoogle);
+    </script>
     <script src="js/map.js"></script>
     <script src="js/main.js"></script>
     <!-- Google Maps API -->

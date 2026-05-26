@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+    - main # Se ejecuta al hacer push a la rama main
+
+# Configura los permisos del GITHUB_TOKEN para permitir el despliegue oficial de Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Evita que se pisen despliegues simultáneos
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Descargar el código fuente
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. Inyectar de forma segura la API Key de Google Maps
+    - name: Inject Google Maps API Key Secret 🔑
+      run: |
+        mkdir -p js
+        echo "const GOOGLE_MAPS_API_KEY = '${{ secrets.GOOGLE_MAPS_API_KEY }}';" > js/key.js
+
+    # 3. Configurar de forma nativa GitHub Pages
+    - name: Configure Pages 🛠️
+      uses: actions/configure-pages@v5
+
+    # 4. Empaquetar y Filtrar 
+    # Excluimos explícitamente los archivos de desarrollo y Docker para que no se suban a la web
+    - name: Upload Artifact 📦
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '.'
+        exclude: |
+          Dockerfile
+          docker-compose.yml
+          .dockerignore
+          .env
+          .env.example
+          README.md
+          .github/**
+
+    # 5. Desplegar el artefacto directamente usando el Action Oficial de GitHub
+    - name: Deploy to GitHub Pages 🌍
+      id: deployment
+      uses: actions/deploy-pages@v4
