@@ -1,0 +1,17 @@
+{
+  "short_name": "DoctaMap",
+  "name": "Docta Overlay",
+  "icons": [
+    {
+      "src": "https://proaco-core.s3.us-east-2.amazonaws.com/c19jdYgjTDec827drVyuXV2cnyTGiFITZxPFeSRw.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "display": "standalone",
+  "orientation": "portrait"
+}

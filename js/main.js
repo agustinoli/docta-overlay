@@ -177,3 +177,15 @@ window.addEventListener('beforeunload', () => {
         doctaMapInstance.destroy();
     }
 });
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then((registration) => {
+                console.log('PWA: Service Worker registrado con éxito en el alcance:', registration.scope);
+            })
+            .catch((error) => {
+                console.error('PWA: Falló el registro del Service Worker:', error);
+            });
+    });
+}
